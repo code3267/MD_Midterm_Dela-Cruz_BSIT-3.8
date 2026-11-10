@@ -1,0 +1,222 @@
+import 'dart:io';
+
+mixin Timestampable {
+  DateTime _createdAt = DateTime.now();
+
+  String get formattedTimestamp {
+    return "${_createdAt.year}-${_createdAt.month.toString().padLeft(2, '0')}-${_createdAt.day.toString().padLeft(2, '0')} "
+        "${_createdAt.hour.toString().padLeft(2, '0')}:${_createdAt.minute.toString().padLeft(2, '0')}";
+  }
+}
+
+abstract class CenterRecord with Timestampable {
+  String _id;
+  String _name;
+
+  CenterRecord(this._id, this._name);
+
+  String get id => _id;
+  String get name => _name;
+
+  set name(String value) {
+    if (value.trim().isNotEmpty) {
+      _name = value;
+    }
+  }
+
+  void displayDetails();
+}
+
+class BookResource extends CenterRecord {
+  String _author;
+  int _copiesAvailable;
+
+  BookResource(String id, String name, this._author, this._copiesAvailable) : super(id, name);
+
+  String get author => _author;
+  int get copiesAvailable => _copiesAvailable;
+
+  set copiesAvailable(int value) {
+    if (value >= 0) {
+      _copiesAvailable = value;
+    }
+  }
+
+  @override
+  void displayDetails() {
+    print("[Book] ID: $_id | Title: $_name | Author: $_author | Available Copies: $_copiesAvailable | Registered: $formattedTimestamp");
+  }
+}
+
+class EquipmentResource extends CenterRecord {
+  String _conditionStatus;
+  double _hourlyRate;
+
+  EquipmentResource(String id, String name, this._conditionStatus, this._hourlyRate) : super(id, name);
+
+  String get conditionStatus => _conditionStatus;
+  double get hourlyRate => _hourlyRate;
+
+  set conditionStatus(String status) {
+    if (status.trim().isNotEmpty) {
+      _conditionStatus = status;
+    }
+  }
+
+  @override
+  void displayDetails() {
+    print("[Equipment] ID: $_id | Item: $_name | Condition: $_conditionStatus | Rate: \$$_hourlyRate/hr | Registered: $formattedTimestamp");
+  }
+}
+
+class Participant {
+  String _participantId;
+  String _fullName;
+  String _membershipType;
+
+  Participant(this._participantId, this._fullName, this._membershipType);
+
+  String get participantId => _participantId;
+  String get fullName => _fullName;
+  String get membershipType => _membershipType;
+
+  void displayParticipant() {
+    print("Participant ID: $_participantId | Name: $_fullName | Membership: $_membershipType");
+  }
+}
+
+void printHeader(String title) {
+  print("\n" + "=" * 50);
+  print("   $title");
+  print("=" * 50);
+}
+
+String getValidInput(String prompt) {
+  while (true) {
+    stdout.write(prompt);
+    String? input = stdin.readLineSync();
+    if (input != null && input.trim().isNotEmpty) {
+      return input.trim();
+    }
+    print("Error: Input cannot be empty. Please try again.");
+  }
+}
+
+int getValidInt(String prompt) {
+  while (true) {
+    try {
+      String input = getValidInput(prompt);
+      int value = int.parse(input);
+      if (value < 0) {
+        print("Error: Value cannot be negative.");
+        continue;
+      }
+      return value;
+    } catch (e) {
+      print("Error: Please enter a valid whole number.");
+    }
+  }
+}
+
+void main() {
+  List<CenterRecord> resources = [];
+  Map<String, Participant> participants = {};
+
+  resources.add(BookResource("B001", "Dart Programming Guide", "John Smith", 5));
+  participants["P001"] = Participant("P001", "Alice Johnson", "Regular");
+
+  bool isRunning = true;
+
+  printHeader("COMMUNITY LEARNING CENTER MANAGEMENT SYSTEM");
+
+  while (isRunning) {
+    print("\n--- Main Menu ---");
+    print("[1] Add Resource");
+    print("[2] Register Participant");
+    print("[3] View Records");
+    print("[4] Exit");
+
+    int choice = getValidInt("Enter your choice (1-4): ");
+
+    switch (choice) {
+      case 1:
+        printHeader("ADD LEARNING RESOURCE");
+        print("Select Type: [1] Book  [2] Equipment");
+        int typeChoice = getValidInt("Enter choice (1 or 2): ");
+
+        String id = getValidInput("Enter Resource ID: ");
+        String name = getValidInput("Enter Title / Name: ");
+
+        if (typeChoice == 1) {
+          String author = getValidInput("Enter Author: ");
+          int copies = getValidInt("Enter Copies Available: ");
+          resources.add(BookResource(id, name, author, copies));
+          print("Success: Book added successfully.");
+        } else if (typeChoice == 2) {
+          String condition = getValidInput("Enter Condition: ");
+          while (true) {
+            try {
+              stdout.write("Enter Hourly Rental Rate (\$): ");
+              double rate = double.parse(stdin.readLineSync()!);
+              if (rate < 0) {
+                print("Rate cannot be negative.");
+                continue;
+              }
+              resources.add(EquipmentResource(id, name, condition, rate));
+              print("Success: Equipment added successfully.");
+              break;
+            } catch (e) {
+              print("Error: Please enter a valid decimal number.");
+            }
+          }
+        } else {
+          print("Invalid type selection.");
+        }
+        break;
+
+      case 2:
+        printHeader("REGISTER PARTICIPANT");
+        String pId = getValidInput("Enter Participant ID: ");
+        if (participants.containsKey(pId)) {
+          print("Error: Participant ID already exists.");
+          break;
+        }
+        String pName = getValidInput("Enter Full Name: ");
+        String pType = getValidInput("Enter Membership Type: ");
+        
+        participants[pId] = Participant(pId, pName, pType);
+        print("Success: Participant registered successfully.");
+        break;
+
+      case 3:
+        printHeader("VIEW ALL RECORDS");
+        print("\n--- Learning Resources (Polymorphic Display) ---");
+        if (resources.isEmpty) {
+          print("No resources registered.");
+        } else {
+          for (var resource in resources) {
+            resource.displayDetails();
+          }
+        }
+
+        print("\n--- Registered Participants ---");
+        if (participants.isEmpty) {
+          print("No participants registered.");
+        } else {
+          participants.forEach((key, participant) {
+            participant.displayParticipant();
+          });
+        }
+        break;
+
+      case 4:
+        print("Exiting application. Goodbye!");
+        isRunning = false;
+        break;
+
+      default:
+        print("Error: Invalid menu option. Choose between 1 and 4.");
+    }
+  }
+}
+
